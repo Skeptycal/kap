@@ -1,16 +1,16 @@
-import electron from 'electron';
 import React from 'react';
 import PropTypes from 'prop-types';
+import {ipcRenderer as ipc} from 'electron-better-ipc';
 
 import {connect, PreferencesContainer} from '../../../containers';
 
-import Settings from './settings';
+import General from './general';
 import Plugins from './plugins';
 
 const CATEGORIES = [
   {
-    name: 'settings',
-    Component: Settings
+    name: 'general',
+    Component: General
   }, {
     name: 'plugins',
     Component: Plugins
@@ -18,10 +18,10 @@ const CATEGORIES = [
 ];
 
 class Categories extends React.Component {
-  componentDidUpdate(prevProps) {
-    if (!prevProps.isMounted && this.props.isMounted) {
+  componentDidUpdate(previousProps) {
+    if (!previousProps.isMounted && this.props.isMounted) {
       // Wait for the transitions to end
-      setTimeout(() => electron.ipcRenderer.send('preferences-ready'), 300);
+      setTimeout(async () => ipc.callMain('preferences-ready'), 300);
     }
   }
 
@@ -45,6 +45,7 @@ class Categories extends React.Component {
               flex: 1;
               display: flex;
               overflow-x: hidden;
+              background: var(--background-color);
             }
 
             .switcher {

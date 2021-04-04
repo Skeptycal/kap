@@ -2,14 +2,16 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {connect, PreferencesContainer} from '../../../../containers';
+import {handleKeyboardActivation} from '../../../../utils/inputs';
 import Category from '../category';
 import Tab, {EmptyTab} from './tab';
 
 class Plugins extends React.Component {
   static defaultProps = {
     pluginsInstalled: [],
-    pluginsFromNpm: []
-  }
+    pluginsFromNpm: [],
+    category: 'general'
+  };
 
   render() {
     const {
@@ -17,36 +19,52 @@ class Plugins extends React.Component {
       pluginsFromNpm,
       pluginBeingInstalled,
       pluginBeingUninstalled,
-      install,
-      uninstall,
+      togglePlugin,
       onTransitionEnd,
       tab,
       selectTab,
       npmError,
       fetchFromNpm,
-      openPluginsConfig
+      openPluginsConfig,
+      category
     } = this.props;
+
+    const tabIndex = category === 'plugins' ? 0 : -1;
+    const allPlugins = [
+      ...pluginsInstalled,
+      ...pluginsFromNpm
+    ].sort((a, b) => {
+      if (a.isCompatible !== b.isCompatible) {
+        return b.isCompatible - a.isCompatible;
+      }
+
+      return a.prettyName.localeCompare(b.prettyName);
+    });
 
     return (
       <Category>
         <div className="container">
           <nav className="plugins-nav">
             <div
+              tabIndex={tabIndex}
               className={tab === 'discover' ? 'selected' : ''}
               onClick={() => selectTab('discover')}
+              onKeyDown={handleKeyboardActivation(() => selectTab('discover'))}
             >
               Discover
             </div>
             <div
+              tabIndex={tabIndex}
               className={tab === 'installed' ? 'selected' : ''}
               onClick={() => selectTab('installed')}
+              onKeyDown={handleKeyboardActivation(() => selectTab('installed'))}
             >
               Installed
             </div>
           </nav>
           <div className="tab-container">
             <div className="switcher"/>
-            <div className="tab">
+            <div className="tab" id="discover">
               {
                 npmError ? (
                   <EmptyTab
@@ -56,40 +74,34 @@ class Plugins extends React.Component {
                     link="Refresh"
                     onClick={fetchFromNpm}/>
                 ) : (
-                  pluginsFromNpm.length === 0 ? (
-                    <EmptyTab
-                      title="So, you really like plugins?"
-                      subtitle="You have all the plugins."
-                      link="Marvel at them"
-                      image="/static/all-the-things.png"
-                      onClick={() => selectTab('installed')}/>
-                  ) : (
-                    <Tab
-                      current={pluginBeingInstalled}
-                      plugins={pluginsFromNpm}
-                      disabled={Boolean(pluginBeingInstalled)}
-                      onClick={install}/>
-                  )
+                  <Tab
+                    tabIndex={tabIndex === 0 && tab === 'discover' ? 0 : -1}
+                    current={pluginBeingInstalled || pluginBeingUninstalled}
+                    plugins={allPlugins}
+                    openConfig={openPluginsConfig}
+                    disabled={Boolean(pluginBeingInstalled || pluginBeingUninstalled)}
+                    onTransitionEnd={onTransitionEnd}
+                    onClick={togglePlugin}/>
                 )
               }
             </div>
-            <div className="tab">
+            <div className="tab" id="installed">
               {
                 pluginsInstalled.length === 0 ? (
                   <EmptyTab
                     showIcon
                     title="No plugins yet"
-                    subtitle="Customize Kap your liking with plugins."
-                    link="Discover"
+                    subtitle="Customize Kap to your liking with plugins."
+                    link="Browse"
                     onClick={() => selectTab('discover')}/>
                 ) : (
                   <Tab
-                    checked
+                    tabIndex={tabIndex === 0 && tab === 'installed' ? 0 : -1}
                     disabled={Boolean(pluginBeingInstalled)}
                     current={pluginBeingUninstalled}
                     plugins={pluginsInstalled}
                     openConfig={openPluginsConfig}
-                    onClick={uninstall}
+                    onClick={togglePlugin}
                     onTransitionEnd={onTransitionEnd}/>
                 )
               }
@@ -109,7 +121,7 @@ class Plugins extends React.Component {
             padding: 0 16px;
             display: flex;
             align-items: center;
-            box-shadow: 0 1px 0 0 #ddd, inset 0 1px 0 0 #fff;
+            box-shadow: 0 1px 0 0 var(--row-divider-color), inset 0 1px 0 0 #fff;
             z-index: 10;
           }
 
@@ -121,13 +133,24 @@ class Plugins extends React.Component {
             justify-content: center;
             padding-bottom: 2px;
             font-size: 1.2rem;
-            color: #007aff;
+            color: var(--kap);
             font-weight: 500;
             width: 64px;
+            outline: none;
+          }
+
+          .plugins-nav div:focus {
+            border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+            padding-bottom: 0;
           }
 
           .plugins-nav .selected {
-            border-bottom: 2px solid #007aff;
+            border-bottom: 2px solid var(--kap);
+            padding-bottom: 0;
+          }
+
+          .plugins-nav .selected:focus {
+            border-bottom: 2px solid var(--kap);
             padding-bottom: 0;
           }
 
@@ -159,14 +182,14 @@ Plugins.propTypes = {
   pluginsFromNpm: PropTypes.array,
   pluginBeingInstalled: PropTypes.string,
   pluginBeingUninstalled: PropTypes.string,
-  install: PropTypes.func.isRequired,
-  uninstall: PropTypes.func.isRequired,
-  onTransitionEnd: PropTypes.func,
+  togglePlugin: PropTypes.elementType.isRequired,
+  onTransitionEnd: PropTypes.elementType,
   tab: PropTypes.string,
-  selectTab: PropTypes.func.isRequired,
+  selectTab: PropTypes.elementType.isRequired,
   npmError: PropTypes.bool,
   fetchFromNpm: PropTypes.func.isRequired,
-  openPluginsConfig: PropTypes.func.isRequired
+  openPluginsConfig: PropTypes.func.isRequired,
+  category: PropTypes.string
 };
 
 export default connect(
@@ -178,7 +201,8 @@ export default connect(
     pluginBeingUninstalled,
     onTransitionEnd,
     tab,
-    npmError
+    npmError,
+    category
   }) => ({
     pluginsInstalled,
     pluginsFromNpm,
@@ -186,16 +210,15 @@ export default connect(
     pluginBeingUninstalled,
     onTransitionEnd,
     tab,
-    npmError
+    npmError,
+    category
   }), ({
-    install,
-    uninstall,
+    togglePlugin,
     selectTab,
     fetchFromNpm,
     openPluginsConfig
   }) => ({
-    install,
-    uninstall,
+    togglePlugin,
     selectTab,
     fetchFromNpm,
     openPluginsConfig

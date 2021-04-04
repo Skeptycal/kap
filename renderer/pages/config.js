@@ -1,5 +1,6 @@
 import React from 'react';
 import {Provider} from 'unstated';
+import {ipcRenderer as ipc} from 'electron-better-ipc';
 
 import {ConfigContainer} from '../containers';
 import Config from '../components/config';
@@ -8,25 +9,28 @@ import WindowHeader from '../components/window-header';
 const configContainer = new ConfigContainer();
 
 export default class ConfigPage extends React.Component {
-  state = {pluginName: ''}
+  state = {title: ''};
 
   componentDidMount() {
-    const ipc = require('electron-better-ipc');
-
     ipc.answerMain('plugin', pluginName => {
       configContainer.setPlugin(pluginName);
-      this.setState({pluginName: pluginName.replace(/^kap-/, '')});
+      this.setState({title: pluginName.replace(/^kap-/, '')});
+    });
+
+    ipc.answerMain('edit-service', ({pluginName, serviceTitle}) => {
+      configContainer.setEditService(pluginName, serviceTitle);
+      this.setState({title: serviceTitle});
     });
   }
 
   render() {
-    const {pluginName} = this.state;
+    const {title} = this.state;
 
     return (
       <div className="root">
         <div className="cover-window">
           <Provider inject={[configContainer]}>
-            <WindowHeader title={pluginName}/>
+            <WindowHeader title={title}/>
             <Config/>
           </Provider>
         </div>
@@ -44,8 +48,18 @@ export default class ConfigPage extends React.Component {
             font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
           }
 
+          :root {
+            --background-color: #ffffff;
+            --button-color: var(--kap);
+          }
+
+          .dark .cover-window {
+            --background-color: #313234;
+            --button-color: #2182f0;
+          }
+
           .cover-window {
-            background-color: white;
+            background-color: var(--background-color);
             z-index: -2;
             display: flex;
             flex-direction: column;

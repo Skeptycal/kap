@@ -22,6 +22,8 @@ import EditIcon from './edit';
 import ErrorIcon from './error';
 import OpenConfigIcon from './open-config';
 import OpenOnGithubIcon from './open-on-github';
+import HelpIcon from './help';
+import BackPlainIcon from './back-plain';
 
 export {
   ApplicationsIcon,
@@ -47,5 +49,7 @@ export {
   EditIcon,
   ErrorIcon,
   OpenConfigIcon,
-  OpenOnGithubIcon
+  OpenOnGithubIcon,
+  HelpIcon,
+  BackPlainIcon
 };

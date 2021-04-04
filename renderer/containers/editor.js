@@ -1,119 +1,191 @@
-import electron from 'electron';
 import {Container} from 'unstated';
-import moment from 'moment';
-
+import {ipcRenderer as ipc} from 'electron-better-ipc';
+import * as stringMath from 'string-math';
 import {shake} from '../utils/inputs';
 
 const isMuted = format => ['gif', 'apng'].includes(format);
 
 export default class EditorContainer extends Container {
-  state = {
-    fps: 15
-  }
+  state = {};
 
   setVideoContainer = videoContainer => {
     this.videoContainer = videoContainer;
-  }
+  };
 
-  mount = (filePath, fps = 15, resolve) => {
+  mount = ({filePath, fps = 15, originalFilePath, isNewRecording, recordingName, title}, resolve) => {
     const src = `file://${filePath}`;
     this.finishLoading = resolve;
 
-    this.setState({src, filePath, fps, originalFps: fps, wasMuted: false});
+    this.setState({
+      src,
+      filePath,
+      originalFilePath,
+      recordingName,
+      title,
+      fps: Math.min(fps, this.state.fps),
+      originalFps: fps,
+      wasMuted: false,
+      isNewRecording
+    });
     this.videoContainer.setSrc(src);
-  }
+  };
 
   setDimensions = (width, height) => {
     this.setState({width, height, ratio: width / height, original: {width, height}});
-  }
+  };
 
   changeDimension = (event, {ignoreEmpty = true} = {}) => {
     const {ratio, original, lastValid = {}} = this.state;
-    const {target} = event;
-    const {name, value} = target;
+    const {currentTarget} = event;
+    const {name, value} = currentTarget;
     const updates = {...lastValid, lastValid: null};
 
-    if (value === '' && ignoreEmpty) {
+    if ((value === '' || value === '0') && ignoreEmpty) {
       const {width, height} = this.state;
       this.setState({width: null, height: null, lastValid: {width, height}});
       return;
     }
 
-    if (value.match(/^\d+$/)) {
-      const val = parseInt(value, 10);
-      const min = 1;
+    if (!/^\d+$/.test(value) && ignoreEmpty) {
+      const {width, height, lastValid = {}} = this.state;
+      this.setState({[name]: value, lastValid: {width, height, ...lastValid}});
+      return;
+    }
+
+    let parsedValue;
+    try {
+      parsedValue = stringMath(value);
+    } catch {}
+
+    if (parsedValue) {
+      const roundedValue = Math.round(parsedValue);
 
       if (name === 'width') {
-        if (val < min) {
-          shake(target, {className: 'shake-left'});
+        const min = Math.max(1, Math.ceil(ratio));
+
+        if (ignoreEmpty) {
+          updates.width = roundedValue;
+        } else if (roundedValue < min) {
+          shake(currentTarget, {className: 'shake-left'});
           updates.width = min;
-        } else if (val > original.width) {
-          shake(target, {className: 'shake-left'});
+        } else if (roundedValue > original.width) {
+          shake(currentTarget, {className: 'shake-left'});
           updates.width = original.width;
         } else {
-          updates.width = val;
+          updates.width = roundedValue;
         }
 
-        updates.height = Math.round(updates.width / ratio);
+        updates.height = Math.floor(updates.width / ratio);
       } else {
-        if (val < min) {
-          shake(target, {className: 'shake-right'});
+        const min = Math.max(1, Math.ceil(1 / ratio));
+
+        if (ignoreEmpty) {
+          updates.height = roundedValue;
+        } else if (roundedValue < min) {
+          shake(currentTarget, {className: 'shake-right'});
           updates.height = min;
-        } else if (val > original.height) {
-          shake(target, {className: 'shake-right'});
+        } else if (roundedValue > original.height) {
+          shake(currentTarget, {className: 'shake-right'});
           updates.height = original.height;
         } else {
-          updates.height = val;
+          updates.height = roundedValue;
         }
 
-        updates.width = Math.round(updates.height * ratio);
+        updates.width = Math.ceil(updates.height * ratio);
       }
     } else if (name === 'width') {
-      shake(target, {className: 'shake-left'});
+      shake(currentTarget, {className: 'shake-left'});
     } else {
-      shake(target, {className: 'shake-right'});
+      shake(currentTarget, {className: 'shake-right'});
     }
 
     this.setState(updates);
-  }
+  };
 
-  setOptions = options => {
-    const {format, plugin} = this.state;
-    const updates = {options};
+  openEditPluginConfig = async () => {
+    const {editPlugin, filePath} = this.state;
+
+    await ipc.callMain('open-edit-config', {
+      pluginName: editPlugin.pluginName,
+      serviceTitle: editPlugin.title,
+      filePath
+    });
+
+    ipc.callMain('refresh-usage');
+  };
+
+  setOptions = ({exportOptions = [], editOptions = [], fps}) => {
+    const {format, plugin, editPlugin} = this.state;
+    const updates = {options: exportOptions, editOptions, fpsOptions: fps};
 
     if (format) {
-      const option = options.find(option => option.format === format);
+      const option = exportOptions.find(option => option.format === format);
 
-      if (!option.plugins.find(p => p.title === plugin)) {
-        const [{title}] = option.plugins;
-        updates.plugin = title;
+      if (!option.plugins.some(p => p.title === plugin)) {
+        const [{title}, {title: secondTitle} = {}] = option.plugins;
+        updates.plugin = title === 'Open With' ? secondTitle : title;
       }
     } else {
-      const [option] = options;
-      const [{title}] = option.plugins;
+      const [option] = exportOptions;
+      const [{title}, {title: secondTitle} = {}] = option.plugins;
       updates.format = option.format;
-      updates.plugin = title;
+      updates.plugin = title === 'Open With' ? secondTitle : title;
+    }
+
+    if (!this.state.fps && fps && fps[updates.format]) {
+      updates.fps = fps[updates.format];
+    }
+
+    if (editPlugin) {
+      updates.editPlugin = editOptions.find(({title, pluginName}) => title === editPlugin.title && pluginName === editPlugin.pluginName);
     }
 
     this.setState(updates);
-  }
+  };
+
+  saveOriginal = () => {
+    const {filePath, originalFilePath} = this.state;
+    ipc.callMain('save-original', {inputPath: originalFilePath || filePath});
+  };
 
   selectFormat = format => {
-    const {plugin, options, wasMuted} = this.state;
+    const {plugin, options, wasMuted, fpsOptions, originalFps} = this.state;
     const {plugins} = options.find(option => option.format === format);
-    const newPlugin = plugins.find(p => p.title === plugin) ? plugin : plugins[0].title;
+    const newPlugin = plugin !== 'Open With' && plugins.some(p => p.title === plugin) ? plugin : plugins[0].title;
 
-    if (isMuted(format) && !isMuted(this.state.format)) {
-      this.setState({wasMuted: this.videoContainer.state.isMuted});
-      this.videoContainer.mute();
-    } else if (!isMuted(format) && isMuted(this.state.format) && !wasMuted) {
-      this.videoContainer.unmute();
+    if (this.videoContainer.state.hasAudio) {
+      if (isMuted(format) && !isMuted(this.state.format)) {
+        this.setState({wasMuted: this.videoContainer.state.isMuted});
+        this.videoContainer.mute();
+      } else if (!isMuted(format) && isMuted(this.state.format) && !wasMuted) {
+        this.videoContainer.unmute();
+      }
     }
 
-    this.setState({format, plugin: newPlugin});
-  }
+    const updates = {format, plugin: newPlugin, openWithApp: null};
 
-  selectPlugin = plugin => this.setState({plugin})
+    if (fpsOptions && fpsOptions[format]) {
+      updates.fps = Math.min(originalFps, fpsOptions[format]);
+    }
+
+    this.setState(updates);
+  };
+
+  selectPlugin = plugin => {
+    if (plugin === 'open-plugins') {
+      ipc.callMain('open-preferences', {category: 'plugins', tab: 'discover'});
+    } else {
+      this.setState({plugin, openWithApp: null});
+    }
+  };
+
+  selectEditPlugin = editPlugin => {
+    this.setState({editPlugin});
+  };
+
+  selectOpenWithApp = openWithApp => {
+    this.setState({plugin: 'Open With', openWithApp});
+  };
 
   setFps = (value, target, {ignoreEmpty = true} = {}) => {
     const {fps, lastValidFps} = this.state;
@@ -123,11 +195,12 @@ export default class EditorContainer extends Container {
       } else {
         this.setState({lastValidFps: null, fps: lastValidFps});
       }
+
       return;
     }
 
-    if (value.match(/^\d+$/)) {
-      const fps = parseInt(value, 10);
+    if (/^\d+$/.test(value)) {
+      const fps = Number.parseInt(value, 10);
       const {originalFps} = this.state;
 
       if (fps < 1) {
@@ -136,44 +209,52 @@ export default class EditorContainer extends Container {
       } else if (fps > originalFps) {
         shake(target);
         this.setState({fps: originalFps});
+        ipc.callMain('update-usage', {format: this.state.format, fps: originalFps});
       } else {
         this.setState({fps});
+        ipc.callMain('update-usage', {format: this.state.format, fps});
       }
     } else {
       shake(target);
     }
-  }
+  };
 
   load = () => {
     this.finishLoading();
-  }
+  };
 
   getSnapshot = () => {
     const time = this.videoContainer.state.currentTime;
     const {filePath} = this.state;
-    const {remote} = electron;
-
-    const now = moment();
-
-    const path = remote.dialog.showSaveDialog(remote.BrowserWindow.getFocusedWindow(), {
-      defaultPath: `Snapshot ${now.format('YYYY-MM-DD')} at ${now.format('H.mm.ss')}.jpg`
-    });
-
-    const ipc = require('electron-better-ipc');
 
     ipc.callMain('export-snapshot', {
       inputPath: filePath,
-      outputPath: path,
       time
     });
-  }
+  };
 
   startExport = () => {
-    const {width, height, fps, filePath, options, format, plugin: serviceTitle, originalFps} = this.state;
-    const {startTime, endTime, isMuted} = this.videoContainer.state;
+    const {
+      width,
+      height,
+      fps,
+      openWithApp,
+      filePath,
+      originalFilePath,
+      options,
+      format,
+      plugin: serviceTitle,
+      originalFps,
+      isNewRecording,
+      editPlugin,
+      original,
+      recordingName
+    } = this.state;
+    const {startTime, endTime, isMuted, duration} = this.videoContainer.state;
+
+    const shouldCrop = original.width !== width || original.height !== height || startTime !== 0 || endTime !== duration;
 
     const plugin = options.find(option => option.format === format).plugins.find(p => p.title === serviceTitle);
-    const {pluginName, isDefault} = plugin;
 
     const data = {
       exportOptions: {
@@ -182,19 +263,24 @@ export default class EditorContainer extends Container {
         fps,
         startTime,
         endTime,
-        isMuted
+        isMuted,
+        shouldCrop
       },
-      inputPath: filePath,
-      pluginName,
-      isDefault,
-      serviceTitle,
+      recordingName,
+      inputPath: originalFilePath || filePath,
+      previewPath: filePath,
+      sharePlugin: {
+        ...plugin,
+        serviceTitle
+      },
+      editPlugin,
       format,
-      originalFps
+      originalFps,
+      isNewRecording,
+      openWithApp
     };
 
-    const ipc = require('electron-better-ipc');
-
     ipc.callMain('export', data);
-    ipc.callMain('update-usage', {format, plugin: pluginName});
-  }
+    ipc.callMain('update-usage', {format, plugin: plugin.pluginName, fps});
+  };
 }

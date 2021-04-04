@@ -12,7 +12,7 @@ class Handle extends React.Component {
     left: false,
     right: false,
     ratioLocked: false
-  }
+  };
 
   render() {
     const {
@@ -85,18 +85,16 @@ Handle.propTypes = {
   bottom: PropTypes.bool,
   left: PropTypes.bool,
   right: PropTypes.bool,
-  onClick: PropTypes.func.isRequired,
+  onClick: PropTypes.elementType.isRequired,
   ratioLocked: PropTypes.bool
 };
-
-/* eslint-disable react/no-array-index-key */
 
 class Handles extends React.Component {
   static defaultProps = {
     ratioLocked: false,
     width: 0,
     height: 0
-  }
+  };
 
   render() {
     const {
@@ -119,7 +117,7 @@ class Handles extends React.Component {
       <div className="content">
         <div className="border">
           {
-            show && [...(new Array(8).keys())].map(
+            show && [...(Array.from({length: 8}).keys())].map(
               i => (
                 <Handle
                   key={`handle-${i}`}
@@ -158,13 +156,11 @@ class Handles extends React.Component {
   }
 }
 
-/* eslint-enable react/no-array-index-key */
-
 Handles.propTypes = {
   isActive: PropTypes.bool,
   width: PropTypes.number,
   height: PropTypes.number,
-  startResizing: PropTypes.func.isRequired,
+  startResizing: PropTypes.elementType.isRequired,
   showHandles: PropTypes.bool,
   ratioLocked: PropTypes.bool,
   willStartRecording: PropTypes.bool,
@@ -184,12 +180,15 @@ export const getResizingCursor = ({top, bottom, right, left}) => {
   if ((top || bottom) && !left && !right) {
     return 'cursor: ns-resize;';
   }
+
   if ((left || right) && !top && !bottom) {
     return 'cursor: ew-resize;';
   }
+
   if ((top && left) || (bottom && right)) {
     return 'cursor: nwse-resize;';
   }
+
   if ((top && right) || (bottom && left)) {
     return 'cursor: nesw-resize;';
   }

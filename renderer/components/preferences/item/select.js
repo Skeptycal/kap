@@ -3,20 +3,21 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import {DropdownArrowIcon} from '../../../vectors';
+import {handleKeyboardActivation} from '../../../utils/inputs';
 
 class Select extends React.Component {
   static defaultProps = {
     options: [],
     placeholder: 'Select',
     noOptionsMessage: 'No options'
-  }
+  };
 
   constructor(props) {
     super(props);
     this.select = React.createRef();
   }
 
-  state = {}
+  state = {};
 
   static getDerivedStateFromProps(nextProps) {
     const {options, onSelect, selected} = nextProps;
@@ -51,10 +52,10 @@ class Select extends React.Component {
         y: Math.round(boundingRect.top)
       });
     }
-  }
+  };
 
   render() {
-    const {options, selected, placeholder, noOptionsMessage} = this.props;
+    const {options, selected, placeholder, noOptionsMessage, tabIndex, full} = this.props;
 
     const selectedLabel = options.length === 0 ? noOptionsMessage : (
       selected === undefined ? placeholder : options.find(option => option.value === selected).label
@@ -63,8 +64,10 @@ class Select extends React.Component {
     return (
       <div
         ref={this.select}
+        tabIndex={tabIndex}
         className="select"
         onClick={this.handleClick}
+        onKeyDown={handleKeyboardActivation(this.handleClick, {isMenu: true})}
       >
         <span>{selectedLabel}</span>
         <div className="dropdown">
@@ -72,9 +75,10 @@ class Select extends React.Component {
         </div>
         <style jsx>{`
           .select {
-            border: 1px solid #ddd;
+            background: var(--input-background-color);
+            border: 1px solid var(--input-border-color);
             border-radius: 4px;
-            height: 2.4rem;
+            height: ${full ? '32px' : '2.4rem'};
             transition: border 0.12s ease-in-out;
             display: flex;
             align-items: center;
@@ -82,7 +86,15 @@ class Select extends React.Component {
             user-select: none;
             line-height: 2.4rem;
             position: relative;
-            width: 92px;
+            width: ${full ? '100%' : '92px'};
+            margin-top: ${full ? '8px' : '0px'};
+            color: var(--title-color);
+            outline: none;
+            box-shadow: var(--input-shadow);
+          }
+
+          .select:focus {
+            border-color: var(--kap);
           }
 
           .select span {
@@ -95,13 +107,14 @@ class Select extends React.Component {
           }
 
           .select:hover {
-            border-color: #ccc;
+            border-color: var(--input-hover-border-color);
           }
 
           .dropdown {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
+            margin-top: -2px;
             right: 8px;
             pointer-events: none;
             display: flex;
@@ -117,10 +130,12 @@ Select.propTypes = {
     label: PropTypes.string,
     value: PropTypes.any
   })),
-  onSelect: PropTypes.func.isRequired,
+  onSelect: PropTypes.elementType.isRequired,
   selected: PropTypes.any,
   placeholder: PropTypes.string,
-  noOptionsMessage: PropTypes.string
+  noOptionsMessage: PropTypes.string,
+  tabIndex: PropTypes.number.isRequired,
+  full: PropTypes.bool
 };
 
 export default Select;

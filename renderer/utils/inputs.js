@@ -14,11 +14,11 @@ const debounceTimeout = 500;
 export const minWidth = 20;
 export const minHeight = 20;
 
-export const shake = (el, {className = 'shake'} = {}) => {
-  el.classList.add(className);
+export const shake = (element, {className = 'shake'} = {}) => {
+  element.classList.add(className);
 
-  el.addEventListener('animationend', () => {
-    el.classList.remove(className);
+  element.addEventListener('animationend', () => {
+    element.classList.remove(className);
   }, {once: true});
 
   return true;
@@ -50,11 +50,11 @@ const handleWidthInput = _.debounce(({
     return;
   }
 
-  if (value.match(/^\d+$/)) {
-    const val = parseInt(value, 10);
+  if (/^\d+$/.test(value)) {
+    const integer = Number.parseInt(value, 10);
 
-    target.width = Math.max(minWidth, Math.min(screenWidth, val));
-    if (target.width !== val) {
+    target.width = Math.max(minWidth, Math.min(screenWidth, integer));
+    if (target.width !== integer) {
       shake(widthInput.current);
     }
 
@@ -97,11 +97,11 @@ const handleHeightInput = _.debounce(({
     return;
   }
 
-  if (value.match(/^\d+$/)) {
-    const val = parseInt(value, 10);
+  if (/^\d+$/.test(value)) {
+    const integer = Number.parseInt(value, 10);
 
-    target.height = Math.max(minHeight, Math.min(screenHeight, val));
-    if (target.height !== val) {
+    target.height = Math.max(minHeight, Math.min(screenHeight, integer));
+    if (target.height !== integer) {
       shake(heightInput.current);
     }
 
@@ -152,7 +152,7 @@ const buildAspectRatioMenu = ({setRatio, ratio}) => {
         label: r,
         type: 'radio',
         checked: r === selectedRatio,
-        click: () => setRatio(r.split(':').map(d => parseInt(d, 10)))
+        click: () => setRatio(r.split(':').map(d => Number.parseInt(d, 10)))
       })
     );
   }
@@ -172,21 +172,41 @@ const buildAspectRatioMenu = ({setRatio, ratio}) => {
   return menu;
 };
 
-const handleInputKeyPress = onChange => event => {
-  const multiplier = event.shiftKey ? 10 : 1;
-  const parsedValue = parseInt(event.currentTarget.value, 10);
-  const [min, max] = event.currentTarget.name === 'width' ? [minWidth, screenWidth] : [minHeight, screenHeight];
-
-  // Fake an onChange event
-  if (event.key === 'ArrowUp') {
-    onChange({currentTarget: {value: `${Math.min(parsedValue + multiplier, max)}`}});
-  } else if (event.key === 'ArrowDown') {
-    onChange({currentTarget: {value: `${Math.max(parsedValue - multiplier, min)}`}});
+const handleInputKeyPress = (onChange, min, max) => event => {
+  if (event.key === 'Enter') {
+    return onChange(event, {ignoreEmpty: false});
   }
 
   // Don't let shift key lock aspect ratio
   if (event.key === 'Shift') {
     event.stopPropagation();
+  }
+
+  const multiplier = event.shiftKey ? 10 : 1;
+  const parsedValue = Number.parseInt(event.currentTarget.value, 10);
+  if (parsedValue === Number.NaN) {
+    return;
+  }
+
+  // Fake an onChange event
+  if (event.key === 'ArrowUp') {
+    event.currentTarget.value = `${Math.min(parsedValue + multiplier, max)}`;
+    onChange(event);
+  } else if (event.key === 'ArrowDown') {
+    event.currentTarget.value = `${Math.max(parsedValue - multiplier, min)}`;
+    onChange(event);
+  }
+};
+
+const handleKeyboardActivation = (onClick, {isMenu} = {}) => event => {
+  if (
+    (isMenu && event.key === 'ArrowDown') ||
+    (!isMenu && ['Enter', ' '].includes(event.key))
+  ) {
+    event.preventDefault();
+    if (onClick) {
+      onClick(event);
+    }
   }
 };
 
@@ -194,5 +214,6 @@ export {
   handleWidthInput,
   handleHeightInput,
   buildAspectRatioMenu,
-  handleInputKeyPress
+  handleInputKeyPress,
+  handleKeyboardActivation
 };

@@ -1,20 +1,23 @@
 import {Container} from 'unstated';
-
-let ipc;
+import {ipcRenderer as ipc} from 'electron-better-ipc';
 
 export default class ExportsContainer extends Container {
   state = {
     exports: []
-  }
+  };
 
   mount = async () => {
-    ipc = require('electron-better-ipc');
     const exports = await ipc.callMain('get-exports');
 
-    this.setState({exports: exports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))});
+    this.setState({
+      exports: exports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+      isMounted: true
+    });
 
-    ipc.answerMain('update-export', this.update);
-  }
+    ipc.answerMain('update-export-data', updates => {
+      this.update(updates);
+    });
+  };
 
   update = updates => {
     const {createdAt} = updates;
@@ -25,19 +28,20 @@ export default class ExportsContainer extends Container {
       exports.unshift(updates);
     } else {
       if (!exports[index].error && updates.error) {
-        console.error(updates.error);
+        console.error(updates.error.stack);
       }
+
       exports[index] = updates;
     }
 
     this.setState({exports});
-  }
+  };
 
   cancel = createdAt => {
     ipc.callMain('cancel-export', createdAt);
-  }
+  };
 
   openInEditor = createdAt => {
     ipc.callMain('open-export', createdAt);
-  }
+  };
 }

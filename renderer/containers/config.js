@@ -4,13 +4,13 @@ import {Container} from 'unstated';
 export default class ConfigContainer extends Container {
   remote = electron.remote || false;
 
-  state = {selectedTab: 0}
+  state = {selectedTab: 0};
 
   setPlugin(pluginName) {
-    const Plugin = this.remote.require('./plugin');
-    this.plugin = new Plugin(pluginName);
+    const {InstalledPlugin} = this.remote.require('./plugins/plugin');
+    this.plugin = new InstalledPlugin(pluginName);
     this.config = this.plugin.config;
-    this.validators = this.plugin.validators;
+    this.validators = this.config.validators;
     this.validate();
     this.setState({
       validators: this.validators,
@@ -19,15 +19,29 @@ export default class ConfigContainer extends Container {
     });
   }
 
+  setEditService = (pluginName, serviceTitle) => {
+    const {InstalledPlugin} = this.remote.require('./plugins/plugin');
+    this.plugin = new InstalledPlugin(pluginName);
+    this.config = this.plugin.config;
+    this.validators = this.config.validators.filter(({title}) => title === serviceTitle);
+    this.validate();
+    this.setState({
+      validators: this.validators,
+      values: this.config.store,
+      pluginName,
+      serviceTitle
+    });
+  };
+
   validate = () => {
     for (const validator of this.validators) {
-      validator(this.config.store);
+      validator.validate(this.config.store);
     }
-  }
+  };
 
   closeWindow = () => this.remote.getCurrentWindow().close();
 
-  openConfig = () => this.plugin.openConfig();
+  openConfig = () => this.plugin.openConfigInEditor();
 
   viewOnGithub = () => this.plugin.viewOnGithub();
 
@@ -37,11 +51,12 @@ export default class ConfigContainer extends Container {
     } else {
       this.config.set(key, value);
     }
+
     this.validate();
     this.setState({values: this.config.store});
-  }
+  };
 
   selectTab = selectedTab => {
     this.setState({selectedTab});
-  }
+  };
 }

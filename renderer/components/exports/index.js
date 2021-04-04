@@ -1,3 +1,4 @@
+import electron from 'electron';
 import PropTypes from 'prop-types';
 import React from 'react';
 
@@ -5,6 +6,12 @@ import {connect, ExportsContainer} from '../../containers';
 import Export from './export';
 
 class Exports extends React.Component {
+  componentDidUpdate(previousProps) {
+    if (!previousProps.isMounted && this.props.isMounted) {
+      electron.ipcRenderer.send('exports-ready');
+    }
+  }
+
   render() {
     const {exports, cancel, openInEditor} = this.props;
 
@@ -13,8 +20,8 @@ class Exports extends React.Component {
         {
           exports.map(exp => (
             <Export
-              {...exp}
               key={exp.createdAt}
+              {...exp}
               cancel={() => cancel(exp.createdAt)}
               openInEditor={() => openInEditor(exp.createdAt)}/>
           ))
@@ -22,6 +29,7 @@ class Exports extends React.Component {
         <style jsx>{`
             flex: 1;
             overflow-y: auto;
+            background: var(--background-color);
         `}</style>
       </div>
     );
@@ -30,12 +38,13 @@ class Exports extends React.Component {
 
 Exports.propTypes = {
   exports: PropTypes.arrayOf(PropTypes.object),
-  cancel: PropTypes.func,
-  openInEditor: PropTypes.func
+  cancel: PropTypes.elementType,
+  openInEditor: PropTypes.elementType,
+  isMounted: PropTypes.bool
 };
 
 export default connect(
   [ExportsContainer],
-  ({exports}) => ({exports}),
+  ({exports, isMounted}) => ({exports, isMounted}),
   ({cancel, openInEditor}) => ({cancel, openInEditor})
 )(Exports);

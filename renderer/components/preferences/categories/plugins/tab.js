@@ -31,7 +31,7 @@ export const EmptyTab = ({title, subtitle, link, onClick, showIcon, image}) => {
 
         .title {
           height: 24px;
-          color: #111111;
+          color: var(--title-color);
           font-size: 1.6rem;
           font-weight: 500;
           margin-top: 36px;
@@ -45,7 +45,7 @@ export const EmptyTab = ({title, subtitle, link, onClick, showIcon, image}) => {
         }
 
         .link {
-          color: #007AFF;
+          color: var(--kap);
           font-size: 1.2rem;
           font-weight: 500;
         }
@@ -60,7 +60,7 @@ export const EmptyTab = ({title, subtitle, link, onClick, showIcon, image}) => {
         footer {
           display: flex;
           width: 100%;
-          background-image: url(${image});
+          ${image ? `background-image: url(${image});` : ''}
           background-size: contain;
           background-repeat: no-repeat;
           background-position: center bottom;
@@ -75,22 +75,23 @@ EmptyTab.propTypes = {
   title: PropTypes.string,
   subtitle: PropTypes.string,
   link: PropTypes.string,
-  onClick: PropTypes.func.isRequired,
+  onClick: PropTypes.elementType.isRequired,
   showIcon: PropTypes.bool,
   image: PropTypes.string
 };
 
-const Tab = ({checked, current, plugins, disabled, onClick, onTransitionEnd, openConfig}) => {
+const Tab = ({current, plugins, disabled, onClick, onTransitionEnd, openConfig, tabIndex}) => {
   return plugins.map(plugin => {
     return (
       <Plugin
         key={plugin.name}
+        tabIndex={tabIndex}
         plugin={plugin}
         disabled={disabled}
         loading={current === plugin.name}
-        checked={current === plugin.name ? !checked : checked}
+        checked={plugin.isInstalled ? (current !== plugin.name) : (current === plugin.name)}
         openConfig={plugin.hasConfig ? (() => openConfig(plugin.name)) : undefined}
-        onClick={() => onClick(plugin.name)}
+        onClick={() => onClick(plugin)}
         onTransitionEnd={onTransitionEnd}
       />
     );
@@ -104,7 +105,8 @@ Tab.propTypes = {
   disabled: PropTypes.bool,
   onClick: PropTypes.func.isRequired,
   onTransitionEnd: PropTypes.func,
-  openConfig: PropTypes.func
+  openConfig: PropTypes.func,
+  tabIndex: PropTypes.number.isRequired
 };
 
 export default Tab;

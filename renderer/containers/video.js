@@ -1,19 +1,23 @@
 import {Container} from 'unstated';
+import electron from 'electron';
 
 export default class VideoContainer extends Container {
   state = {
     isReady: false,
     isPaused: false,
     isMuted: false,
+    hasAudio: false,
     startTime: 0,
     endTime: 0
   };
 
   setEditorContainer = editorContainer => {
     this.editorContainer = editorContainer;
-  }
+  };
 
-  setSrc = src => this.setState({src})
+  setSrc = src => {
+    this.setState({src});
+  };
 
   checkTime = () => {
     if (this.ticker) {
@@ -22,7 +26,7 @@ export default class VideoContainer extends Container {
 
     this.updateTime(this.video.currentTime);
     this.ticker = setTimeout(this.checkTime, 1000 / 120);
-  }
+  };
 
   updateTime = currentTime => {
     const {startTime, endTime} = this.state;
@@ -33,7 +37,7 @@ export default class VideoContainer extends Container {
     } else {
       this.setState({currentTime});
     }
-  }
+  };
 
   setStartTime = startTime => {
     const {endTime} = this.state;
@@ -41,7 +45,7 @@ export default class VideoContainer extends Container {
       this.video.currentTime = startTime;
       this.setState({startTime, currentTime: startTime});
     }
-  }
+  };
 
   setEndTime = endTime => {
     const {startTime} = this.state;
@@ -49,7 +53,7 @@ export default class VideoContainer extends Container {
       this.video.currentTime = endTime;
       this.setState({endTime, currentTime: endTime});
     }
-  }
+  };
 
   setVideo = video => {
     this.video = video;
@@ -58,14 +62,28 @@ export default class VideoContainer extends Container {
       const {videoWidth, videoHeight, duration} = video;
       this.editorContainer.setDimensions(videoWidth, videoHeight);
       this.setState({duration, startTime: 0, endTime: duration});
-      this.mute();
+    });
+
+    video.addEventListener('loadeddata', () => {
+      const hasAudio = video.webkitAudioDecodedByteCount > 0 ||
+        Boolean(video.audioTracks && video.audioTracks.length > 0);
+
+      if (!hasAudio) {
+        this.mute();
+      }
+
+      this.setState({hasAudio});
     });
 
     video.addEventListener('canplaythrough', () => {
       const {isReady} = this.state;
       if (!isReady) {
         this.editorContainer.load();
-        video.play();
+
+        if (electron.remote.getCurrentWindow().isFocused()) {
+          this.play();
+        }
+
         this.setState({isReady: true});
       }
     });
@@ -85,29 +103,41 @@ export default class VideoContainer extends Container {
       this.updateTime(endTime);
       this.play();
     });
-  }
+  };
 
-  play = () => {
-    this.setState({isPaused: false});
-    this.video.play();
-  }
+  play = async () => {
+    try {
+      this.playPromise = this.video.play();
+      await this.playPromise;
+      this.setState({isPaused: false});
+    } catch {
+      this.setState({isPaused: true});
+    } finally {
+      this.playPromise = undefined;
+    }
+  };
 
-  pause = () => {
-    this.setState({isPaused: true});
+  pause = async () => {
+    if (this.playPromise) {
+      await this.playPromise;
+    }
+
     this.video.pause();
-  }
+    this.setState({isPaused: true});
+  };
 
   mute = () => {
     this.setState({isMuted: true});
     this.video.muted = true;
-  }
+  };
 
   unmute = () => {
     this.setState({isMuted: false});
     this.video.muted = false;
-  }
+  };
 
   seek = time => {
     this.video.currentTime = time;
-  }
+    this.updateTime(time);
+  };
 }

@@ -35,8 +35,7 @@ export default class ExportsPage extends React.Component {
             }
 
             .cover-window {
-              background-color: white;
-              z-index: -2;
+              background-color: var(--window-background-color);
               display: flex;
               flex-direction: column;
               font-size: 1.4rem;
@@ -44,6 +43,18 @@ export default class ExportsPage extends React.Component {
               -webkit-font-smoothing: antialiased;
               letter-spacing: -.01rem;
               cursor: default;
+            }
+
+            :root {
+              --thumbnail-overlay-color: rgba(0, 0, 0, 0.4);
+              --row-hover-color: #f9f9f9;
+              --background-color: #fff;
+            }
+
+            .dark {
+              --thumbnail-overlay-color: rgba(0, 0, 0, 0.2);
+              --row-hover-color: rgba(255, 255, 255, 0.1);
+              --background-color: #222222;
             }
         `}</style>
       </div>

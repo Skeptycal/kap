@@ -7,21 +7,25 @@
 
 ## Get Kap
 
-**[Download the latest release](https://kap-updates.now.sh/download)** (macOS only)
+**[Download the latest release](https://kap.now.sh/api)** (macOS only)
 
 Or install with [Homebrew-Cask](https://caskroom.github.io):
 
 ```
-$ brew cask install kap
+$ brew install --cask kap
 ```
 
 ## Contribute
 
 Read the [contribution guide](contributing.md).
 
+## Plugins
+
+For more info on how to create plugins, read the [plugins docs](docs/plugins.md).
+
 ## Dev builds
 
-Download [`master`](https://kap-artifacts.now.sh/master) or builds for any other branch using: `https://kap-artifacts.now.sh/<branch>`. Note that these builds are unsupported and may have issues.<br>
+Download [`main`](https://kap-artifacts.now.sh/main) or builds for any other branch using: `https://kap-artifacts.now.sh/<branch>`. Note that these builds are unsupported and may have issues.
 
 ## Related Repositories
 
@@ -34,7 +38,7 @@ Download [`master`](https://kap-artifacts.now.sh/master) or builds for any other
 
 ## Thanks
 
-- [▲ ZEIT](https://zeit.co/) for the README formatting and for [hosting our downloads and updates](https://zeit.co/now/).
-- [● CircleCI](https://circleci.com/) for supporting the Open Source community and making our builds fast and reliable.
+- [▲ Vercel](https://vercel.com/) for fast deployments served from the edge, hosting our website, downloads, and updates.
+- [● CircleCI](https://circleci.com/) for supporting the open source community and making our builds fast and reliable.
 - [△ Sentry](https://sentry.io/) for letting us know when Kap isn't behaving and helping us eradicate said behaviour.
 - Our [contributors](https://github.com/wulkano/kap/contributors) who help maintain Kap and make screen recording and sharing easy.

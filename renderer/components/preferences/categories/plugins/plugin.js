@@ -18,7 +18,7 @@ const PluginTitle = ({title, label, onClick}) => (
     <style jsx>{`
       .plugin-title {
         display: inline-block;
-        color: #007aff;
+        color: var(--kap);
         cursor: pointer;
       }
 
@@ -37,21 +37,24 @@ const PluginTitle = ({title, label, onClick}) => (
 PluginTitle.propTypes = {
   title: PropTypes.string,
   label: PropTypes.string,
-  onClick: PropTypes.func
+  onClick: PropTypes.elementType
 };
 
-const getLink = ({homepage, links}) => homepage || (links && links.homepage);
+const Plugin = ({plugin, checked, disabled, onTransitionEnd, onClick, loading, openConfig, tabIndex}) => {
+  const requiredVersion = !plugin.isCompatible && (
+    (plugin.kapVersion && `Requires Kap version ${plugin.kapVersion}.`) ||
+    (plugin.macosVersion && `Requires macOS version ${plugin.macosVersion}`)
+  );
 
-const Plugin = ({plugin, checked, disabled, onTransitionEnd, onClick, loading, openConfig}) => {
-  const warning = plugin.hasConfig && !plugin.isValid && (
-    <div className="invalid" title="This plugin requires configuration">
+  const error = !plugin.isCompatible && (
+    <div className="invalid" title={`This plugin is not supported. ${requiredVersion}`}>
       <ErrorIcon fill="#ff6059" hoverFill="#ff6059" onClick={openConfig}/>
       <style jsx>{`
         .invalid {
           height: 36px;
           padding-right: 16px;
           margin-right: 16px;
-          border-right: 1px solid #f1f1f1;
+          border-right: 1px solid var(--row-divider-color);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -61,23 +64,47 @@ const Plugin = ({plugin, checked, disabled, onTransitionEnd, onClick, loading, o
     </div>
   );
 
+  const warning = plugin.hasConfig && !plugin.isValid && (
+    <div className="invalid" title="This plugin requires configuration">
+      <ErrorIcon fill="#ff6059" hoverFill="#ff6059" onClick={openConfig}/>
+      <style jsx>{`
+        .invalid {
+          height: 36px;
+          padding-right: 16px;
+          margin-right: 16px;
+          border-right: 1px solid var(--row-divider-color);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          align-self: center;
+        }
+      `}</style>
+    </div>
+  );
+
+  const onTitleClick = () => {
+    if (plugin.link) {
+      electron.shell.openExternal(plugin.link);
+    }
+  };
+
   return (
     <Item
       key={plugin.name}
-      warning={warning}
+      warning={error || warning}
       id={plugin.name}
       title={
         <PluginTitle
           title={plugin.prettyName}
           label={plugin.version}
-          onClick={() => electron.shell.openExternal(getLink(plugin))}/>
+          onClick={onTitleClick}/>
       }
-      subtitle={plugin.description}
+      subtitle={[plugin.description, requiredVersion].filter(Boolean)}
     >
       {
-        openConfig && (
+        openConfig && plugin.isCompatible && (
           <div className="config-icon">
-            <EditIcon size="18px" onClick={openConfig}/>
+            <EditIcon size="18px" tabIndex={tabIndex} onClick={openConfig}/>
             <style jsx>{`
               .config-icon {
                 margin-right: 16px;
@@ -88,8 +115,9 @@ const Plugin = ({plugin, checked, disabled, onTransitionEnd, onClick, loading, o
         )
       }
       <Switch
+        tabIndex={tabIndex}
         checked={checked}
-        disabled={disabled}
+        disabled={disabled || (!plugin.isCompatible && !plugin.isInstalled) || plugin.isSymlink}
         loading={loading}
         onTransitionEnd={onTransitionEnd}
         onClick={onClick}/>
@@ -101,10 +129,11 @@ Plugin.propTypes = {
   plugin: PropTypes.object,
   checked: PropTypes.bool,
   disabled: PropTypes.bool,
-  onTransitionEnd: PropTypes.func,
-  onClick: PropTypes.func,
+  onTransitionEnd: PropTypes.elementType,
+  onClick: PropTypes.elementType,
   loading: PropTypes.bool,
-  openConfig: PropTypes.func
+  openConfig: PropTypes.func,
+  tabIndex: PropTypes.number.isRequired
 };
 
 export default Plugin;

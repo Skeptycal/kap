@@ -5,7 +5,7 @@ const barWidth = 464;
 const barHeight = 64;
 
 export default class ActionBarContainer extends Container {
-  remote = electron.remote || false
+  remote = electron.remote || false;
 
   constructor() {
     super();
@@ -15,7 +15,7 @@ export default class ActionBarContainer extends Container {
       return;
     }
 
-    this.settings = this.remote.require('./common/settings');
+    this.settings = this.remote.require('./common/settings').settings;
     this.state = {
       cropperWidth: '',
       cropperHeight: ''
@@ -27,11 +27,15 @@ export default class ActionBarContainer extends Container {
       cropperWidth: width ? width.toString() : '',
       cropperHeight: height ? height.toString() : ''
     });
-  }
+  };
 
-  setWidth = cropperWidth => this.setState({cropperWidth})
+  setWidth = cropperWidth => {
+    this.setState({cropperWidth});
+  };
 
-  setHeight = cropperHeight => this.setState({cropperHeight})
+  setHeight = cropperHeight => {
+    this.setState({cropperHeight});
+  };
 
   setDisplay = display => {
     const {width, height, cropper} = display;
@@ -46,7 +50,7 @@ export default class ActionBarContainer extends Container {
       height: barHeight,
       ratioLocked
     });
-  }
+  };
 
   resetPosition = () => {
     const {screenWidth, screenHeight} = this.state;
@@ -57,15 +61,15 @@ export default class ActionBarContainer extends Container {
       width: barWidth,
       height: barHeight
     });
-  }
+  };
 
   bindCursor = cursorContainer => {
     this.cursorContainer = cursorContainer;
-  }
+  };
 
   bindCropper = cropperContainer => {
     this.cropperContainer = cropperContainer;
-  }
+  };
 
   updateSettings = updates => {
     const {x, y, ratioLocked} = this.state;
@@ -77,7 +81,7 @@ export default class ActionBarContainer extends Container {
       ...updates
     });
     this.setState(updates);
-  }
+  };
 
   toggleRatioLock = ratioLocked => {
     const {ratioLocked: isLocked} = this.state;
@@ -86,27 +90,37 @@ export default class ActionBarContainer extends Container {
     } else {
       this.updateSettings({ratioLocked: !isLocked});
     }
+
     this.cropperContainer.setOriginal();
-  }
+  };
 
   toggleAdvanced = () => {
     if (!this.cropperContainer.state.isFullscreen) {
-      const {advanced} = this.state;
+      const {advanced, screenWidth} = this.state;
       this.updateSettings({advanced: !advanced});
+
+      if (!advanced) {
+        const width = screenWidth * 0.2;
+        const height = width * 0.75; // 4:3
+        this.cropperContainer.setSize({
+          width,
+          height
+        });
+      }
     }
-  }
+  };
 
   startMoving = ({pageX, pageY}) => {
     this.setState({isMoving: true, offsetX: pageX, offsetY: pageY});
     this.cursorContainer.addCursorObserver(this.move);
-  }
+  };
 
   stopMoving = () => {
     const {x, y} = this.state;
     this.updateSettings({x, y});
     this.setState({isMoving: false});
     this.cursorContainer.removeCursorObserver(this.move);
-  }
+  };
 
   move = ({pageX, pageY}) => {
     const {x, y, offsetX, offsetY, height, width, screenWidth, screenHeight} = this.state;
@@ -125,5 +139,5 @@ export default class ActionBarContainer extends Container {
     }
 
     this.setState(updates);
-  }
+  };
 }
